@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  db:
+    build:
+      context: ./mcp_serv/db_docker   # contains Dockerfile, 01_trend_sample.sql, 02_create_user.sql
+    container_name: trend-db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: trend_tracking_sample
+    ports:
+      - "3307:3306"   # host:container - only needed if you want to reach it from outside Docker too
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mcp-server:
+    build:
+      context: ./mcp_serv/mcp_docker   # contains Dockerfile, server.py
+    container_name: mysql-analytics-mcp
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./mcp_serv/.env
+    environment:
+      DB_HOST: db          # overrides .env's DB_HOST=localhost with the compose service name
+      DB_PORT: 3306         # overrides .env's DB_PORT with the container-internal port
+    ports:
+      - "8080:8080"
